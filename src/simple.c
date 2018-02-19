@@ -55,7 +55,7 @@ simperium_app_init(const char *app_name, const char *api_key)
     }
 
     if (strnlen(app_name, MAX_APP_NAME_LEN) == MAX_APP_NAME_LEN ||
-            strnlen(api_key, MAX_API_KEY_LEN) == MAX_API_KEY_LEN) {
+        strnlen(api_key, MAX_API_KEY_LEN) == MAX_API_KEY_LEN) {
         goto error;
     }
 
