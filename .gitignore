@@ -1,6 +1,9 @@
 # Prerequisites
 *.d
 
+# Artifacts
+simple
+
 # Object files
 *.o
 *.ko
