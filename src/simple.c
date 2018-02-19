@@ -71,7 +71,7 @@ error:
     return NULL;
 }
 
-    void
+void
 simperium_app_deinit(struct simperium_app *app)
 {
     if (!app || !app->curl) {
@@ -83,7 +83,7 @@ simperium_app_deinit(struct simperium_app *app)
     free(app);
 }
 
-    struct simperium_session *
+struct simperium_session *
 simperium_app_login(struct simperium_app *app, const char *user, const char *passwd)
 {
     // TODO validate user/passwd lengths
@@ -105,7 +105,8 @@ simperium_app_login(struct simperium_app *app, const char *user, const char *pas
     return session;
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     struct arg_lit *help;
     struct arg_str *app_name, *api_key, *user, *passwd;
