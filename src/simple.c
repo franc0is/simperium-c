@@ -15,29 +15,27 @@ const char *ENDPOINT_AUTH = "/authorize/";
 // Limits
 #define MAX_APP_NAME_LEN 120
 #define MAX_API_KEY_LEN 64
+#define MAX_TOKEN_LEN 64
 #define MAX_URL_LEN 300
 
 // Data structures
 struct simperium_app {
-    char app_name[MAX_APP_NAME_LEN];
+    char name[MAX_APP_NAME_LEN];
     char api_key[MAX_API_KEY_LEN];
     CURL *curl;
 };
 
 struct simperium_session {
-    struct simperium_app *app;
-    char url[MAX_URL_LEN];
+    char token[MAX_TOKEN_LEN];
 };
 
 // Helper functions
-static int
-prv_app_set_url(struct simperium_session *session, const char *host, const char *endpoint)
+void
+prv_build_url(char *url_out, const char *app_name, const char *host, const char *endpoint)
 {
-    // XXX we could allocate URL on the stack perhaps
-    strcat(session->url, host);
-    strcat(session->url, session->app->app_name);
-    strcat(session->url, endpoint);
-    curl_easy_setopt(session->app->curl, CURLOPT_URL, session->url);
+    strcat(url_out, host);
+    strcat(url_out, app_name);
+    strcat(url_out, endpoint);
 }
 
 // Public API
@@ -60,7 +58,7 @@ simperium_app_init(const char *app_name, const char *api_key)
         goto error;
     }
 
-    strncpy(app->app_name, app_name, MAX_APP_NAME_LEN);
+    strncpy(app->name, app_name, MAX_APP_NAME_LEN);
     strncpy(app->api_key, api_key, MAX_API_KEY_LEN);
     app->curl = curl;
 
@@ -85,7 +83,7 @@ simperium_app_deinit(struct simperium_app *app)
 }
 
 struct simperium_session *
-simperium_app_login(struct simperium_app *app, const char *user, const char *passwd)
+simperium_session_open(struct simperium_app *app, const char *user, const char *passwd)
 {
     // TODO validate user/passwd lengths
     if (app == NULL) {
@@ -97,9 +95,13 @@ simperium_app_login(struct simperium_app *app, const char *user, const char *pas
         return NULL;
     }
 
-    session->app = app;
 
-    prv_app_set_url(session, HOST_AUTH, "/authorize/");
+    // Set URL
+    char url[MAX_URL_LEN] = {0};
+    prv_build_url(url, app->name, HOST_AUTH, "/authorize/");
+    curl_easy_setopt(app->curl, CURLOPT_URL, url);
+
+    // Set POST data
     json_t *post_json = json_pack("{s:s, s:s, s:s}",
                                   "client_id", app->api_key,
                                   "username", user,
@@ -110,14 +112,20 @@ simperium_app_login(struct simperium_app *app, const char *user, const char *pas
     char *post_data = json_dumps(post_json, JSON_ENCODE_ANY);
     curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, post_data);
 
+    // Run request
     CURLcode res = curl_easy_perform(app->curl);
-
     if(res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
     }
 
     return session;
+}
+
+void
+simperium_session_close(struct simperium_session *session)
+{
+    free(session);
 }
 
 int
@@ -165,13 +173,21 @@ main(int argc, char **argv)
     struct simperium_app *app = simperium_app_init(app_name->sval[0], api_key->sval[0]);
     if (!app) {
         printf("Failed to initialize simperium application\n");
+        exitcode = 1;
+        goto exit;
     }
 
-    struct simperium_session *session = simperium_app_login(app, user->sval[0], passwd->sval[0]);
+    struct simperium_session *session = simperium_session_open(app, user->sval[0], passwd->sval[0]);
     if (!session) {
         printf("Failed to start simperium session\n");
+        exitcode = 1;
+        goto deinit_app;
     }
 
+    simperium_session_close(session);
+
+deinit_app:
+    simperium_app_deinit(app);
 exit:
     arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
     return exitcode;
