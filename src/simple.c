@@ -32,8 +32,7 @@ struct simperium_session {
 
 struct response_data {
     size_t bytes_written;
-    size_t bytes_left;
-    char buffer[];
+    char *buffer;
 };
 
 // Helper functions
@@ -51,14 +50,11 @@ prv_auth_callback(void *contents, size_t size, size_t nmemb, void *userp)
     size_t size_bytes = size * nmemb;
     struct response_data *rd = userp;
 
-    if (rd->bytes_left < size_bytes) {
-        // Note that this will cause an error
-        size_bytes = rd->bytes_left;
-    }
+    rd->buffer = realloc(rd->buffer, rd->bytes_written + size_bytes + 1);
+    assert(rd->buffer != NULL);
 
     memcpy(&rd->buffer[rd->bytes_written], contents, size_bytes);
     rd->bytes_written += size_bytes;
-    rd->bytes_left -= size_bytes;
 
     return size_bytes;
 }
@@ -132,12 +128,10 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     json_decref(req_json);
 
     // Set callback to handle response data
-    struct response_data *resp_data = calloc(sizeof(struct response_data) + 250, 1); // FIXME
-    assert(resp_data != NULL);
-
-    resp_data->bytes_left = 250; // FIXME
+    struct response_data resp_data = {0};
+    resp_data.buffer = malloc(1);
     curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_auth_callback);
-    curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, resp_data);
+    curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
 
     // Run request
     CURLcode res = curl_easy_perform(app->curl);
@@ -148,10 +142,10 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     }
 
     // Extract token from response
-    json_t *resp_json = json_loads(resp_data->buffer, JSON_DECODE_ANY, NULL);
+    json_t *resp_json = json_loads(resp_data.buffer, JSON_DECODE_ANY, NULL);
     if (resp_json == NULL) {
         fprintf(stderr, "malformed JSON, received: %s\n",
-                resp_data->buffer);
+                resp_data.buffer);
         goto error;
     }
     const char *u, *tk, *id;
@@ -161,7 +155,7 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
                                         "userid", &id);
     if (result != 0) {
         fprintf(stderr, "No token found in: %s\n",
-                resp_data->buffer);
+                resp_data.buffer);
     }
     strcpy(session->token, tk);
     json_decref(resp_json);
@@ -170,7 +164,7 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
 
 error:
     free(req_data);
-    free(resp_data);
+    free(resp_data.buffer);
     return session;
 }
 
