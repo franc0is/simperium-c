@@ -13,8 +13,8 @@ IGNORE_ERRORS = >/dev/null 2>&1 || true
 
 SOURCES := src/simple.c
 INCLUDES := .
-CFLAGS := -lcurl
-LDFLAGS := -lcurl
+CFLAGS := -lcurl -ljansson
+LDFLAGS := -lcurl -ljansson
 
 # Include libs here
 include lib/argtable3.mk

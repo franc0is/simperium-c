@@ -1,5 +1,6 @@
 #include <argtable3.h>
 #include <curl/curl.h>
+#include <jansson.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,15 +100,14 @@ simperium_app_login(struct simperium_app *app, const char *user, const char *pas
     session->app = app;
 
     prv_app_set_url(session, HOST_AUTH, "/authorize/");
-
-    // XXX Add json library
-    char post_data[250] = "{\"client_id\": \"";
-    strcat(post_data, app->api_key);
-    strcat(post_data, "\", \"username\": \"");
-    strcat(post_data, user);
-    strcat(post_data, "\", \"password\": \"");
-    strcat(post_data, passwd);
-    strcat(post_data, "\"}");
+    json_t *post_json = json_pack("{s:s, s:s, s:s}",
+                                  "client_id", app->api_key,
+                                  "username", user,
+                                  "password", passwd);
+    if (post_json == NULL) {
+        return NULL;
+    }
+    char *post_data = json_dumps(post_json, JSON_ENCODE_ANY);
     curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, post_data);
 
     CURLcode res = curl_easy_perform(app->curl);
