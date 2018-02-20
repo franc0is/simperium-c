@@ -100,7 +100,22 @@ simperium_app_login(struct simperium_app *app, const char *user, const char *pas
 
     prv_app_set_url(session, HOST_AUTH, "/authorize/");
 
-    //res = curl_easy_perform(curl);
+    // XXX Add json library
+    char post_data[250] = "{\"client_id\": \"";
+    strcat(post_data, app->api_key);
+    strcat(post_data, "\", \"username\": \"");
+    strcat(post_data, user);
+    strcat(post_data, "\", \"password\": \"");
+    strcat(post_data, passwd);
+    strcat(post_data, "\"}");
+    curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, post_data);
+
+    CURLcode res = curl_easy_perform(app->curl);
+
+    if(res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+    }
 
     return session;
 }
