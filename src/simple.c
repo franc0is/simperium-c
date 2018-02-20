@@ -1,4 +1,5 @@
 #include <argtable3.h>
+#include <assert.h>
 #include <curl/curl.h>
 #include <jansson.h>
 #include <stdio.h>
@@ -29,6 +30,12 @@ struct simperium_session {
     char token[MAX_TOKEN_LEN];
 };
 
+struct response_data {
+    size_t bytes_written;
+    size_t bytes_left;
+    char buffer[];
+};
+
 // Helper functions
 void
 prv_build_url(char *url_out, const char *app_name, const char *host, const char *endpoint)
@@ -38,14 +45,30 @@ prv_build_url(char *url_out, const char *app_name, const char *host, const char 
     strcat(url_out, endpoint);
 }
 
+static size_t
+prv_auth_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t size_bytes = size * nmemb;
+    struct response_data *rd = userp;
+
+    if (rd->bytes_left < size_bytes) {
+        // Note that this will cause an error
+        size_bytes = rd->bytes_left;
+    }
+
+    memcpy(&rd->buffer[rd->bytes_written], contents, size_bytes);
+    rd->bytes_written += size_bytes;
+    rd->bytes_left -= size_bytes;
+
+    return size_bytes;
+}
+
 // Public API
 struct simperium_app *
 simperium_app_init(const char *app_name, const char *api_key)
 {
     struct simperium_app *app = calloc(sizeof(struct simperium_app), 1);
-    if (app == NULL) {
-        return NULL;
-    }
+    assert(app != NULL);
 
     curl_global_init(CURL_GLOBAL_SSL);
     CURL *curl = curl_easy_init();
@@ -91,10 +114,7 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     }
 
     struct simperium_session *session = calloc(sizeof(struct simperium_session), 1);
-    if (session == NULL) {
-        return NULL;
-    }
-
+    assert(session != NULL);
 
     // Set URL
     char url[MAX_URL_LEN] = {0};
@@ -102,23 +122,55 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     curl_easy_setopt(app->curl, CURLOPT_URL, url);
 
     // Set POST data
-    json_t *post_json = json_pack("{s:s, s:s, s:s}",
+    json_t *req_json = json_pack("{s:s, s:s, s:s}",
                                   "client_id", app->api_key,
                                   "username", user,
                                   "password", passwd);
-    if (post_json == NULL) {
-        return NULL;
-    }
-    char *post_data = json_dumps(post_json, JSON_ENCODE_ANY);
-    curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, post_data);
+    assert(req_json != NULL);
+    char *req_data = json_dumps(req_json, JSON_ENCODE_ANY);
+    curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, req_data);
+    json_decref(req_json);
+
+    // Set callback to handle response data
+    struct response_data *resp_data = calloc(sizeof(struct response_data) + 250, 1); // FIXME
+    assert(resp_data != NULL);
+
+    resp_data->bytes_left = 250; // FIXME
+    curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_auth_callback);
+    curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, resp_data);
 
     // Run request
     CURLcode res = curl_easy_perform(app->curl);
     if(res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
+        goto error;
     }
 
+    // Extract token from response
+    json_t *resp_json = json_loads(resp_data->buffer, JSON_DECODE_ANY, NULL);
+    if (resp_json == NULL) {
+        fprintf(stderr, "malformed JSON, received: %s\n",
+                resp_data->buffer);
+        goto error;
+    }
+    const char *u, *tk, *id;
+    int result = json_unpack(resp_json, "{s:s, s:s, s:s}",
+                                        "username", &u,
+                                        "access_token", &tk,
+                                        "userid", &id);
+    if (result != 0) {
+        fprintf(stderr, "No token found in: %s\n",
+                resp_data->buffer);
+    }
+    strcpy(session->token, tk);
+    json_decref(resp_json);
+
+    printf("Found token %s\n", session->token);
+
+error:
+    free(req_data);
+    free(resp_data);
     return session;
 }
 
