@@ -16,6 +16,8 @@ are still TODO.
 
 ## Dependencies
 
+All dependencies are included in the "3rdparty" directory. They are:
+
 - libcurl
 - jansson
 - argtable3
