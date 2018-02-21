@@ -1,7 +1,10 @@
 CC := gcc-6
 LD := gcc-6
 RM := rm
+MKDIR := mkdir
+
 PROJECT := simple
+BUILD_DIR := build
 
 ifneq ($(VERBOSE),)
   NO_ECHO=
@@ -23,7 +26,7 @@ LDFLAGS := -lcurl -ljansson
 # Include libs here
 include lib/argtable3.mk
 
-OBJS := $(patsubst %.c, %.o, $(SOURCES))
+OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
 INC := $(addprefix -I,$(INCLUDES))
 DEFS := $(addprefix -D,$(DEFINES))
 
@@ -31,20 +34,20 @@ DEFS := $(addprefix -D,$(DEFINES))
 # Rules
 #
 
-%.o: %.c
+$(BUILD_DIR)/%.o: %.c
 	@echo Compiling $(notdir $<)
+	$(NO_ECHO)$(MKDIR) -p $(dir $@)
 	$(NO_ECHO)$(CC) $(CFLAGS) $(INC) $(DEFS) -c $< -o $@
 
 #
 # Targets
 #
 
-$(PROJECT): $(OBJS)
+$(BUILD_DIR)/$(PROJECT): $(OBJS)
 	@echo Linking $@
 	$(NO_ECHO)$(LD) $(LDFLAGS) -o $@ $^
 
 clean:
-	$(NO_ECHO)$(RM) -r $(PROJECT) $(IGNORE_ERRORS)
-	$(NO_ECHO)$(RM) -r $(OBJS) $(IGNORE_ERRORS)
+	$(NO_ECHO)$(RM) -r $(BUILD_DIR)
 
 .PHONY: clean

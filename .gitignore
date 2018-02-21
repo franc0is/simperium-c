@@ -1,8 +1,12 @@
 # Prerequisites
 *.d
 
-# Artifacts
-simple
+# cscope/ctags
+tags
+cscope.out
+
+# build folder
+build
 
 # Object files
 *.o
