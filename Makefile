@@ -9,6 +9,10 @@ else
   NO_ECHO=@
 endif
 
+ifneq ($(DEBUG),)
+  DEFINES = DEBUG
+endif
+
 IGNORE_ERRORS = >/dev/null 2>&1 || true
 
 SOURCES := src/simple.c
@@ -21,8 +25,7 @@ include lib/argtable3.mk
 
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 INC := $(addprefix -I,$(INCLUDES))
-
-CFLAGS += $(INC)
+DEFS := $(addprefix -D,$(DEFINES))
 
 #
 # Rules
@@ -30,7 +33,7 @@ CFLAGS += $(INC)
 
 %.o: %.c
 	@echo Compiling $(notdir $<)
-	$(NO_ECHO)$(CC) $(CFLAGS) -c $< -o $@
+	$(NO_ECHO)$(CC) $(CFLAGS) $(INC) $(DEFS) -c $< -o $@
 
 #
 # Targets

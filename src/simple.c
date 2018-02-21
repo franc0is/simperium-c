@@ -78,6 +78,16 @@ prv_add_auth_header(struct simperium_session *session)
     curl_easy_setopt(session->app->curl, CURLOPT_HTTPHEADER, headers);
 }
 
+static void
+prv_reset_curl(CURL *curl)
+{
+    curl_easy_reset(curl);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+#ifdef DEBUG
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+#endif
+}
+
 // Public API
 struct simperium_app *
 simperium_app_init(const char *app_name, const char *api_key)
@@ -130,8 +140,7 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
 
     session->app = app;
 
-    // libcurl persists options between calls
-    curl_easy_reset(app->curl);
+    prv_reset_curl(app->curl);
 
     // Set URL
     char url[MAX_URL_LEN] = {0};
@@ -182,8 +191,6 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     strcpy(session->token, tk);
     json_decref(resp_json);
 
-    printf("User token is %s\n", session->token);
-
 error:
     free(req_data);
     free(resp_data.buffer);
@@ -228,8 +235,7 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
                                    ENDPOINT_ITEM,
                                    item->id);
 
-    // libcurl persists options between calls
-    curl_easy_reset(app->curl);
+    prv_reset_curl(app->curl);
     prv_add_auth_header(bucket->session);
     curl_easy_setopt(app->curl, CURLOPT_URL, url);
     curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, item->data);
@@ -238,8 +244,10 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
     if (res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
+        return -1;
+    } else {
+        return 0;
     }
-    printf("\n");
 }
 
 int
@@ -321,8 +329,13 @@ main(int argc, char **argv)
         .id = "12345678",
         .data = "{\"title\": \"Watch Battle Royale\",\"done\": false}",
     };
-    simperium_bucket_add_item(todo_bkt, &item);
+    int err = simperium_bucket_add_item(todo_bkt, &item);
+    if (err == 0) {
+        printf("Added one item to todo bucket\n");
+    }
 
+close_bucket:
+    simperium_bucket_close(todo_bkt);
 close_session:
     simperium_session_close(session);
 deinit_app:
