@@ -42,7 +42,7 @@ struct simperium_bucket {
 
 struct simperium_item {
     char id[MAX_ITEM_ID_LEN];
-    const char *data;
+    char *data;
 };
 
 struct response_data {
@@ -227,6 +227,7 @@ simperium_bucket_close(struct simperium_bucket *bucket)
 int
 simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item *item)
 {
+    // XXX if item key is null generate one
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
     sprintf(url, "%s/%s/%s/%s/%s", HOST_API,
@@ -253,13 +254,59 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
 int
 simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item *item)
 {
+    struct simperium_app *app = bucket->session->app;
+    char url[MAX_URL_LEN] = {0};
+    sprintf(url, "%s/%s/%s/%s/%s", HOST_API,
+                                   app->name,
+                                   bucket->name,
+                                   ENDPOINT_ITEM,
+                                   item->id);
 
+    prv_reset_curl(app->curl);
+    prv_add_auth_header(bucket->session);
+    curl_easy_setopt(app->curl, CURLOPT_URL, url);
+
+    // Set callback to handle response data
+    struct response_data resp_data;
+    resp_data.bytes_written = 0;
+    resp_data.buffer = malloc(1);
+    curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_auth_callback);
+    curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
+
+    CURLcode res = curl_easy_perform(app->curl);
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+        free(resp_data.buffer);
+    }
+
+    item->data = resp_data.buffer;
 }
 
 int
 simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_item *item)
 {
+    struct simperium_app *app = bucket->session->app;
+    char url[MAX_URL_LEN] = {0};
+    sprintf(url, "%s/%s/%s/%s/%s", HOST_API,
+                                   app->name,
+                                   bucket->name,
+                                   ENDPOINT_ITEM,
+                                   item->id);
 
+    prv_reset_curl(app->curl);
+    prv_add_auth_header(bucket->session);
+    curl_easy_setopt(app->curl, CURLOPT_URL, url);
+    curl_easy_setopt(app->curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+
+    CURLcode res = curl_easy_perform(app->curl);
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 int
@@ -332,6 +379,18 @@ main(int argc, char **argv)
     int err = simperium_bucket_add_item(todo_bkt, &item);
     if (err == 0) {
         printf("Added one item to todo bucket\n");
+    }
+    item.data = NULL;
+
+    err = simperium_bucket_get_item(todo_bkt, &item);
+    if (err == 0) {
+        printf("Read item back, got %s\n", item.data);
+    }
+    free(item.data);
+
+    err = simperium_bucket_remove_item(todo_bkt, &item);
+    if (err == 0) {
+        printf("Removed item from todo bucket\n");
     }
 
 close_bucket:
