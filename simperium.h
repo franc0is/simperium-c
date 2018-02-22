@@ -18,6 +18,7 @@ struct simperium_item {
     char *data;
 };
 
+typedef int (*simperium_item_callback)(struct simperium_item *item);
 
 struct simperium_app *
 simperium_app_init(const char *app_name, const char *api_key);
@@ -45,3 +46,6 @@ simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item
 
 int
 simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_item *item);
+
+int
+simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callback cb);

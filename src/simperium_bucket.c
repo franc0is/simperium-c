@@ -18,7 +18,7 @@ prv_reset_curl(CURL *curl)
 
 // FIXME duplicated
 static size_t
-prv_auth_callback(void *contents, size_t size, size_t nmemb, void *userp)
+prv_response_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     size_t size_bytes = size * nmemb;
     struct response_data *rd = (struct response_data *)userp;
@@ -114,7 +114,7 @@ simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item
     struct response_data resp_data;
     resp_data.bytes_written = 0;
     resp_data.buffer = malloc(1);
-    curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_auth_callback);
+    curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_response_callback);
     curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
 
     CURLcode res = curl_easy_perform(app->curl);
@@ -153,3 +153,34 @@ simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_i
     }
 }
 
+int
+simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callback cb)
+{
+    struct simperium_app *app = bucket->session->app;
+    char url[MAX_URL_LEN] = {0};
+    // XXX more elegant way to add query params
+    sprintf(url, "%s/%s/%s/%s?cv=0&data=1", HOST_API,
+                                            app->name,
+                                            bucket->name,
+                                            ENDPOINT_INDEX);
+
+    prv_reset_curl(app->curl);
+    prv_add_auth_header(bucket->session);
+    curl_easy_setopt(app->curl, CURLOPT_URL, url);
+
+    // Set callback to handle response data
+    //struct response_data resp_data;
+    //resp_data.bytes_written = 0;
+    //resp_data.buffer = malloc(1);
+    //curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_response_callback);
+    //curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
+
+    CURLcode res = curl_easy_perform(app->curl);
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+        //free(resp_data.buffer);
+    }
+
+    return 0;
+}

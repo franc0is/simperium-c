@@ -9,4 +9,6 @@ static const char *HOST_API = "https://api.simperium.com/1";
 // Endpoints
 static const char *ENDPOINT_AUTH = "authorize";
 static const char *ENDPOINT_ITEM = "i";
+static const char *ENDPOINT_ALL  = "all";
+static const char *ENDPOINT_INDEX  = "index";
 

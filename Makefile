@@ -26,7 +26,6 @@ CFLAGS :=
 LDFLAGS :=
 
 # Include libs here
-include lib/argtable3.mk
 
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
 INC := $(addprefix -I,$(INCLUDES))

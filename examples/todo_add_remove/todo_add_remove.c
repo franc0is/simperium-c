@@ -89,6 +89,9 @@ main(int argc, char **argv)
         printf("Removed item from todo bucket\n");
     }
 
+    err = simperium_bucket_all_items(todo_bkt, NULL);
+    printf("\n");
+
 close_bucket:
     simperium_bucket_close(todo_bkt);
 close_session:
