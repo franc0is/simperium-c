@@ -11,8 +11,13 @@ verified that we can:
 * Remove items from buckets
 * Get items from buckets
 
-Any kind of change polling, network condition handling, and a clean header files
-are still TODO.
+Much remains TODO, including (but not limited to):
+* Any kind of change polling
+* network condition handling
+* a clean header files
+* API comments
+* cross-platform support
+* A sane build system
 
 ## Dependencies
 
