@@ -2,8 +2,9 @@ CC := gcc-6
 LD := gcc-6
 RM := rm
 MKDIR := mkdir
-AR := ar crv
+AR := gar
 
+PROJECT := todo_add_remove
 BUILD_DIR := build
 
 ifneq ($(VERBOSE),)
@@ -18,15 +19,16 @@ endif
 
 IGNORE_ERRORS = >/dev/null 2>&1 || true
 
-SOURCES := src/simperium_auth.c \
-		   src/simperium_bucket.c
+SOURCES := todo_add_remove.c \
+           ../../3rdparty/argtable3-3.0.3/argtable3.c
 
-INCLUDES := . src
+INCLUDES := ../.. \
+            ../../3rdparty/argtable3-3.0.3
+
+LIBRARIES := ../../build/libsimperium.a
+
 CFLAGS :=
-LDFLAGS :=
-
-# Include libs here
-include lib/argtable3.mk
+LDFLAGS := -lcurl -ljansson
 
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
 INC := $(addprefix -I,$(INCLUDES))
@@ -45,9 +47,9 @@ $(BUILD_DIR)/%.o: %.c
 # Targets
 #
 
-$(BUILD_DIR)/libsimperium.a: $(OBJS)
-	@echo Packaging $@
-	$(NO_ECHO)$(AR) $@ $(OBJS)
+$(BUILD_DIR)/$(PROJECT): $(OBJS) $(LIBRARIES)
+	@echo Linking $@
+	$(NO_ECHO)$(LD) $(LDFLAGS) -o $@ $^
 
 clean:
 	$(NO_ECHO)$(RM) -r $(BUILD_DIR)
