@@ -83,7 +83,7 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
     prv_reset_curl(app->curl);
     prv_add_auth_header(bucket->session);
     curl_easy_setopt(app->curl, CURLOPT_URL, url);
-    curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, item->data);
+    curl_easy_setopt(app->curl, CURLOPT_POSTFIELDS, json_dumps(item->json_data, JSON_ENCODE_ANY));
 
     CURLcode res = curl_easy_perform(app->curl);
     if (res != CURLE_OK) {
@@ -96,15 +96,16 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
 }
 
 int
-simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item *item)
+simperium_bucket_get_item(struct simperium_bucket *bucket, const char *id, simperium_item_callback cb)
 {
+    int rv = 0;
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
     sprintf(url, "%s/%s/%s/%s/%s", HOST_API,
                                    app->name,
                                    bucket->name,
                                    ENDPOINT_ITEM,
-                                   item->id);
+                                   id);
 
     prv_reset_curl(app->curl);
     prv_add_auth_header(bucket->session);
@@ -121,10 +122,30 @@ simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item
     if (res != CURLE_OK) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
-        free(resp_data.buffer);
+        rv = -1;
+        goto error;
     }
 
-    item->data = resp_data.buffer;
+    json_t *resp_json = json_loads(resp_data.buffer, JSON_DECODE_ANY, NULL);
+    if (resp_json == NULL) {
+        fprintf(stderr, "malformed JSON, received: %s\n",
+                resp_data.buffer);
+        rv = -1;
+        goto error;
+    }
+
+    if (cb) {
+        struct simperium_item item = {0};
+        strncpy(item.id, id, MAX_ITEM_ID_LEN);
+        item.json_data = resp_json;
+        cb(&item);
+    }
+
+    json_decref(resp_json);
+
+error:
+    free(resp_data.buffer);
+    return rv;
 }
 
 int
@@ -158,29 +179,72 @@ simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callb
 {
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
-    // XXX more elegant way to add query params
-    sprintf(url, "%s/%s/%s/%s?cv=0&data=1", HOST_API,
-                                            app->name,
-                                            bucket->name,
-                                            ENDPOINT_INDEX);
+    char *mark = NULL;
+    int rv = 0;
+    struct response_data resp_data;
+    json_t *resp_json = NULL;
 
-    prv_reset_curl(app->curl);
-    prv_add_auth_header(bucket->session);
-    curl_easy_setopt(app->curl, CURLOPT_URL, url);
+    resp_data.buffer = malloc(1);
 
-    // Set callback to handle response data
-    //struct response_data resp_data;
-    //resp_data.bytes_written = 0;
-    //resp_data.buffer = malloc(1);
-    //curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_response_callback);
-    //curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
+    do {
+        // XXX more elegant way to add query params
+        sprintf(url, "%s/%s/%s/%s?data=1", HOST_API,
+                                           app->name,
+                                           bucket->name,
+                                           ENDPOINT_INDEX);
 
-    CURLcode res = curl_easy_perform(app->curl);
-    if (res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
-        //free(resp_data.buffer);
+        prv_reset_curl(app->curl);
+        prv_add_auth_header(bucket->session);
+        curl_easy_setopt(app->curl, CURLOPT_URL, url);
+
+        // Set callback to handle response data
+        resp_data.bytes_written = 0;
+        curl_easy_setopt(app->curl, CURLOPT_WRITEFUNCTION, prv_response_callback);
+        curl_easy_setopt(app->curl, CURLOPT_WRITEDATA, &resp_data);
+
+        CURLcode res = curl_easy_perform(app->curl);
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                    curl_easy_strerror(res));
+            rv = -1;
+            break;
+        }
+
+        // Extract token from response
+        resp_json = json_loads(resp_data.buffer, JSON_DECODE_ANY, NULL);
+        if (resp_json == NULL) {
+            fprintf(stderr, "malformed JSON, received: %s\n",
+                    resp_data.buffer);
+            rv = -1;
+            break;
+        }
+
+        if (!json_is_object(resp_json)) {
+            fprintf(stderr, "no JSON object found, received %s\n",
+                    resp_data.buffer);
+            rv = -1;
+            break;
+        }
+
+        const json_t *j = NULL;
+        if ((j = json_object_get(resp_json, "index")) == NULL || !json_is_array(j)) {
+            fprintf(stderr, "no index member found, received %s\n",
+                    resp_data.buffer);
+            rv = -1;
+            break;
+        }
+
+        if ((j = json_object_get(resp_json, "mark")) != NULL) {
+            // XXX this will infinite loop rn
+            // mark = json_value(j);
+        }
+    } while (mark != NULL);
+
+    if (resp_json) {
+        json_decref(resp_json);
     }
-
+    if (resp_data.buffer) {
+        free(resp_data.buffer);
+    }
     return 0;
 }

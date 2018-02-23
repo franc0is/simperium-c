@@ -1,5 +1,7 @@
 #pragma once
 
+#include <jansson.h>
+
 enum simperium_result {
     SIMPERIUM_SUCCESS = 0,
 };
@@ -15,9 +17,10 @@ struct simperium_bucket;
 
 struct simperium_item {
     char id[MAX_ITEM_ID_LEN];
-    char *data;
+    json_t *json_data;
 };
 
+// FIXME this needs a context pointer from the app
 typedef int (*simperium_item_callback)(struct simperium_item *item);
 
 struct simperium_app *
@@ -42,7 +45,7 @@ int
 simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item *item);
 
 int
-simperium_bucket_get_item(struct simperium_bucket *bucket, struct simperium_item *item);
+simperium_bucket_get_item(struct simperium_bucket *bucket, const char *id, simperium_item_callback cb);
 
 int
 simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_item *item);
