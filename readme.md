@@ -19,6 +19,9 @@ Much remains TODO, including (but not limited to):
 * cross-platform support
 * A sane build system
 
+At some point, this will also support the WebSocket API (but currently it's all
+HTTP)
+
 ## Dependencies
 
 All dependencies are included in the "3rdparty" directory. They are:
