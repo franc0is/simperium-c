@@ -9,7 +9,7 @@
 static int
 prv_item_callback(struct simperium_item *item)
 {
-    printf("> ITEM: %s\n", json_dumps(item->json_data, JSON_ENCODE_ANY));
+    printf("> ITEM %s:  %s\n", item->id, json_dumps(item->json_data, JSON_ENCODE_ANY));
 }
 
 int
@@ -75,22 +75,21 @@ main(int argc, char **argv)
         goto close_session;
     }
 
-#if 0
+#if 1
     for (int i = 0; i < 100; ++i) {
         struct simperium_item item = {
-            .data = "{\"title\": \"Watch Battle Royale\",\"done\": false}",
+            .json_data = json_loads("{\"title\": \"Watch Battle Royale\",\"done\": false}", JSON_DECODE_ANY, NULL),
         };
         sprintf(item.id, "%d", i);
         int err = simperium_bucket_add_item(todo_bkt, &item);
         if (err != 0) {
             printf("Failed to add bucket item\n");
         }
-        item.data = NULL;
     }
 
     printf("Added 100 items to todo bucket\n");
 
-    int err = simperium_bucket_all_items(todo_bkt, NULL);
+    int err = simperium_bucket_all_items(todo_bkt, NULL, prv_item_callback);
     printf("\n");
 
     for (int i = 0; i < 100; ++i) {

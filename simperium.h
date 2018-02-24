@@ -51,4 +51,6 @@ int
 simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_item *item);
 
 int
-simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callback cb);
+simperium_bucket_all_items(struct simperium_bucket *bucket,
+                           const char **cursor,
+                           simperium_item_callback cb);

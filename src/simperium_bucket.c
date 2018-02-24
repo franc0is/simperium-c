@@ -175,11 +175,13 @@ simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_i
 }
 
 int
-simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callback cb)
+simperium_bucket_all_items(struct simperium_bucket *bucket,
+                           const char **cursor,
+                           simperium_item_callback cb)
 {
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
-    char *mark = NULL;
+    const char *mark = NULL;
     int rv = 0;
     struct response_data resp_data;
     json_t *resp_json = NULL;
@@ -192,6 +194,15 @@ simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callb
                                            app->name,
                                            bucket->name,
                                            ENDPOINT_INDEX);
+
+        if (cursor && *cursor) {
+            strcat(url, "&since=");
+            strcat(url, *cursor);
+        }
+        if (mark) {
+            strcat(url, "&mark=");
+            strcat(url, mark);
+        }
 
         prv_reset_curl(app->curl);
         prv_add_auth_header(bucket->session);
@@ -207,8 +218,10 @@ simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callb
             fprintf(stderr, "curl_easy_perform() failed: %s\n",
                     curl_easy_strerror(res));
             rv = -1;
-            break;
+            goto error;
         }
+
+        // XXX JSON memory management
 
         // Extract token from response
         resp_json = json_loads(resp_data.buffer, JSON_DECODE_ANY, NULL);
@@ -216,14 +229,14 @@ simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callb
             fprintf(stderr, "malformed JSON, received: %s\n",
                     resp_data.buffer);
             rv = -1;
-            break;
+            goto error;
         }
 
         if (!json_is_object(resp_json)) {
             fprintf(stderr, "no JSON object found, received %s\n",
                     resp_data.buffer);
             rv = -1;
-            break;
+            goto error;
         }
 
         const json_t *j = NULL;
@@ -231,15 +244,47 @@ simperium_bucket_all_items(struct simperium_bucket *bucket, simperium_item_callb
             fprintf(stderr, "no index member found, received %s\n",
                     resp_data.buffer);
             rv = -1;
-            break;
+            goto error;
         }
 
-        if ((j = json_object_get(resp_json, "mark")) != NULL) {
-            // XXX this will infinite loop rn
-            // mark = json_value(j);
+        size_t index;
+        json_t *value;
+        json_array_foreach(j, index, value) {
+            const json_t *id_json;
+            json_t *data_json;
+            if ((id_json = json_object_get(value, "id")) == NULL ||
+                !json_is_string(id_json) ||
+                (data_json = json_object_get(value, "d")) == NULL ||
+                !json_is_object(data_json)) {
+                fprintf(stderr, "cannot parse items from response %s\n",
+                        resp_data.buffer);
+                rv = -1;
+                goto error;
+            }
+
+            struct simperium_item item = {0};
+            strncpy(item.id, json_string_value(id_json), MAX_ITEM_ID_LEN);
+            item.json_data = data_json;
+            if (cb) {
+                cb(&item);
+            }
+        }
+
+        if ((j = json_object_get(resp_json, "mark")) != NULL &&
+            json_is_string(j)) {
+            mark = json_string_value(j);
+        } else {
+            mark = NULL;
+        }
+
+        if (cursor &&
+            (j = json_object_get(resp_json, "current")) != NULL &&
+            json_is_string(j)) {
+            *cursor = json_string_value(j);
         }
     } while (mark != NULL);
 
+error:
     if (resp_json) {
         json_decref(resp_json);
     }
