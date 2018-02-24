@@ -6,6 +6,11 @@ enum simperium_result {
     SIMPERIUM_SUCCESS = 0,
 };
 
+enum simperium_op {
+    SIMPERIUM_OP_UPSERT,
+    SIMPERIUM_OP_DELETE,
+};
+
 struct simperium_app;
 struct simperium_session;
 struct simperium_bucket;
@@ -20,8 +25,15 @@ struct simperium_item {
     json_t *json_data;
 };
 
-// FIXME this needs a context pointer from the app
-typedef int (*simperium_item_callback)(struct simperium_item *item);
+struct simperium_change {
+    char id[MAX_ITEM_ID_LEN];
+    enum simperium_op operation;
+    json_t *json_data;
+};
+
+typedef int (*simperium_item_callback)(struct simperium_item *item, void *cb_data);
+
+typedef int (*simperium_change_callback)(struct simperium_change *change, void *cb_data);
 
 struct simperium_app *
 simperium_app_init(const char *app_name, const char *api_key);
@@ -45,7 +57,9 @@ int
 simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item *item);
 
 int
-simperium_bucket_get_item(struct simperium_bucket *bucket, const char *id, simperium_item_callback cb);
+simperium_bucket_get_item(struct simperium_bucket *bucket,
+                          const char *id, simperium_item_callback cb,
+                          void *cb_data);
 
 int
 simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_item *item);
@@ -53,4 +67,11 @@ simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_i
 int
 simperium_bucket_all_items(struct simperium_bucket *bucket,
                            const char **cursor,
-                           simperium_item_callback cb);
+                           simperium_item_callback cb,
+                           void *cb_data);
+
+int
+simperium_bucket_get_changes(struct simperium_bucket *bucket,
+                             const char **cursor,
+                             simperium_change_callback cb,
+                             void *cb_data);

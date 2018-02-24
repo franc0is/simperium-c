@@ -96,7 +96,9 @@ simperium_bucket_add_item(struct simperium_bucket *bucket, struct simperium_item
 }
 
 int
-simperium_bucket_get_item(struct simperium_bucket *bucket, const char *id, simperium_item_callback cb)
+simperium_bucket_get_item(struct simperium_bucket *bucket,
+                          const char *id, simperium_item_callback cb,
+                          void *cb_data)
 {
     int rv = 0;
     struct simperium_app *app = bucket->session->app;
@@ -138,7 +140,7 @@ simperium_bucket_get_item(struct simperium_bucket *bucket, const char *id, simpe
         struct simperium_item item = {0};
         strncpy(item.id, id, MAX_ITEM_ID_LEN);
         item.json_data = resp_json;
-        cb(&item);
+        cb(&item, cb_data);
     }
 
     json_decref(resp_json);
@@ -177,7 +179,8 @@ simperium_bucket_remove_item(struct simperium_bucket *bucket, struct simperium_i
 int
 simperium_bucket_all_items(struct simperium_bucket *bucket,
                            const char **cursor,
-                           simperium_item_callback cb)
+                           simperium_item_callback cb,
+                           void *cb_data)
 {
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
@@ -266,7 +269,7 @@ simperium_bucket_all_items(struct simperium_bucket *bucket,
             strncpy(item.id, json_string_value(id_json), MAX_ITEM_ID_LEN);
             item.json_data = data_json;
             if (cb) {
-                cb(&item);
+                cb(&item, cb_data);
             }
         }
 

@@ -7,7 +7,7 @@
 #include <string.h>
 
 static int
-prv_item_callback(struct simperium_item *item)
+prv_item_callback(struct simperium_item *item, void *cb_data)
 {
     printf("> ITEM %s:  %s\n", item->id, json_dumps(item->json_data, JSON_ENCODE_ANY));
 }
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 
     printf("Added 100 items to todo bucket\n");
 
-    int err = simperium_bucket_all_items(todo_bkt, NULL, prv_item_callback);
+    int err = simperium_bucket_all_items(todo_bkt, NULL, prv_item_callback, NULL);
     printf("\n");
 
     for (int i = 0; i < 100; ++i) {
@@ -114,7 +114,7 @@ main(int argc, char **argv)
         printf("Added one item to todo bucket\n");
     }
 
-    err = simperium_bucket_get_item(todo_bkt, id, prv_item_callback);
+    err = simperium_bucket_get_item(todo_bkt, id, prv_item_callback, NULL);
     if (err == 0) {
         // FIXME
     }
