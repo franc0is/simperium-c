@@ -1,7 +1,7 @@
 #include <assert.h>
-#include "endpoints.h"
 #include "simperium.h"
 #include "simperium_private.h"
+#include "simperium_endpoints.h"
 #include <stdlib.h>
 #include <string.h>
 

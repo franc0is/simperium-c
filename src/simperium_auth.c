@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <jansson.h>
-#include "endpoints.h"
 #include "simperium.h"
 #include "simperium_private.h"
+#include "simperium_endpoints.h"
 #include <string.h>
 
 // FIXME duplicated
