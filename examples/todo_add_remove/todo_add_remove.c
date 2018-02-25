@@ -61,7 +61,10 @@ main(int argc, char **argv)
         goto exit;
     }
 
-    struct simperium_session *session = simperium_session_open(app, user->sval[0], passwd->sval[0]);
+    struct simperium_session *session = simperium_session_open(app,
+                                                               user->sval[0],
+                                                               passwd->sval[0],
+                                                               SIMPERIUM_PROTOCOL_HTTP);
     if (!session) {
         printf("Failed to start simperium session\n");
         exitcode = 1;
@@ -75,55 +78,26 @@ main(int argc, char **argv)
         goto close_session;
     }
 
-#if 1
-    for (int i = 0; i < 100; ++i) {
-        struct simperium_item item = {
-            .json_data = json_loads("{\"title\": \"Watch Battle Royale\",\"done\": false}", JSON_DECODE_ANY, NULL),
-        };
-        sprintf(item.id, "%d", i);
-        int err = simperium_bucket_add_item(todo_bkt, &item);
-        if (err != 0) {
-            printf("Failed to add bucket item\n");
-        }
-    }
-
-    printf("Added 100 items to todo bucket\n");
-
     int err = simperium_bucket_all_items(todo_bkt, NULL, prv_item_callback, NULL);
-    printf("\n");
 
-    for (int i = 0; i < 100; ++i) {
-        struct simperium_item item = {0};
-        sprintf(item.id, "%d", i);
-        err = simperium_bucket_remove_item(todo_bkt, &item);
-        if (err != 0) {
-            printf("Failed to remove bucket item\n");
-        }
-    }
-
-    printf("Cleaned up\n");
-#else
     const char *id = "12345678";
-
     struct simperium_item item = {0};
     strncpy(item.id, id, MAX_ITEM_ID_LEN);
     item.json_data = json_loads("{\"title\": \"Watch Battle Royale\",\"done\": false}", JSON_DECODE_ANY, NULL);
-
-    int err = simperium_bucket_add_item(todo_bkt, &item);
+    err = simperium_bucket_add_item(todo_bkt, &item);
     if (err == 0) {
         printf("Added one item to todo bucket\n");
     }
 
     err = simperium_bucket_get_item(todo_bkt, id, prv_item_callback, NULL);
-    if (err == 0) {
-        // FIXME
+    if (err = 0) {
+        printf("Got one item\n");
     }
 
     err = simperium_bucket_remove_item(todo_bkt, &item);
     if (err == 0) {
         printf("Removed item from todo bucket\n");
     }
-#endif
 
 close_bucket:
     simperium_bucket_close(todo_bkt);

@@ -19,7 +19,9 @@ endif
 IGNORE_ERRORS = >/dev/null 2>&1 || true
 
 SOURCES := src/simperium_auth.c \
-		   src/simperium_bucket.c
+		   src/simperium_bucket.c \
+		   src/simperium_bucket_http.c \
+		   src/simperium_bucket_ws.c
 
 INCLUDES := . src
 CFLAGS :=

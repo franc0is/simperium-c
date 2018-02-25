@@ -11,4 +11,5 @@ static const char *ENDPOINT_AUTH = "authorize";
 static const char *ENDPOINT_ITEM = "i";
 static const char *ENDPOINT_ALL  = "all";
 static const char *ENDPOINT_INDEX  = "index";
+static const char *ENDPOINT_CHANGES = "changes";
 

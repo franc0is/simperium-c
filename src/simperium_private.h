@@ -17,6 +17,7 @@ struct simperium_app {
 
 struct simperium_session {
     struct simperium_app *app;
+    enum simperium_protocol protocol;
     char token[MAX_TOKEN_LEN];
 };
 

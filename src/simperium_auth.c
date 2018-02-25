@@ -76,7 +76,10 @@ simperium_app_deinit(struct simperium_app *app)
 }
 
 struct simperium_session *
-simperium_session_open(struct simperium_app *app, const char *user, const char *passwd)
+simperium_session_open(struct simperium_app *app,
+                       const char *user,
+                       const char *passwd,
+                       enum simperium_protocol protocol)
 {
     assert(app != NULL);
 
@@ -84,6 +87,7 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     assert(session != NULL);
 
     session->app = app;
+    session->protocol = protocol;
 
     prv_reset_curl(app->curl);
 
@@ -135,6 +139,8 @@ simperium_session_open(struct simperium_app *app, const char *user, const char *
     }
     strcpy(session->token, tk);
     json_decref(resp_json);
+
+    // XXX if websocket, need to init it here
 
 error:
     free(req_data);

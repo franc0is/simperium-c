@@ -11,6 +11,11 @@ enum simperium_op {
     SIMPERIUM_OP_DELETE,
 };
 
+enum simperium_protocol {
+    SIMPERIUM_PROTOCOL_HTTP,
+    SIMPERIUM_PROTOCOL_WS,
+};
+
 struct simperium_app;
 struct simperium_session;
 struct simperium_bucket;
@@ -45,7 +50,10 @@ struct simperium_bucket *
 simperium_bucket_open(struct simperium_session *session, const char *bucket_name);
 
 struct simperium_session *
-simperium_session_open(struct simperium_app *app, const char *user, const char *passwd);
+simperium_session_open(struct simperium_app *app,
+                       const char *user,
+                       const char *passwd,
+                       enum simperium_protocol protocol);
 
 void
 simperium_session_close(struct simperium_session *session);
