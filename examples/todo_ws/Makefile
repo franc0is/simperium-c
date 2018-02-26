@@ -23,6 +23,7 @@ SOURCES := todo_ws.c \
            ../../3rdparty/argtable3-3.0.3/argtable3.c
 
 INCLUDES := ../.. \
+            ../../src \
             ../../3rdparty/argtable3-3.0.3
 
 LIBRARIES := ../../build/libsimperium.a

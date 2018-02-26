@@ -1,28 +1,66 @@
 #include <argtable3.h>
+#include <assert.h>
+#include <jansson.h>
 #include <libwebsockets.h>
 #include <simperium.h>
-#include <string.h>
+// XXX private
+#include <simperium_private.h>
+// XXX
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static struct lws *web_socket = NULL;
 static int counter = 0;
 static volatile int stop_received = 0;
 
+static bool bucket_initialized = false;
+
+#define LIBRARY_NAME "simperium-c"
+#define LIBRARY_VERSION "0.1-dev"
+#define CLIENT_ID "todo-ws"
+#define BUCKET_NAME "todo"
+#define SIMPERIUM_WS_API_VERSION 1.1
+
 #define RX_BUFFER_BYTES (256)
 
-void sigint_handler(int dummy) {
-    printf("\n");
-    stop_received = 1;
+static int
+prepare_init_message(char *buf, struct simperium_session *session)
+{
+    json_t *req_json = json_pack("{s:i,s:s,s:s,s:s,s:s,s:s,s:s}",
+                                  "api", 1,
+                                  "clientid", CLIENT_ID,
+                                  "token", session->token,
+                                  "app_id", session->app->name,
+                                  "library", LIBRARY_NAME,
+                                  "version", LIBRARY_VERSION,
+                                  "name", BUCKET_NAME);
+    assert(req_json != NULL);
+    char *req_data = json_dumps(req_json, JSON_ENCODE_ANY);
+    json_decref(req_json);
+
+    // XXX channels?
+    int rv =  sprintf(buf, "0:init:%s", req_data);
+    free(req_data);
+    return rv;
 }
 
-static int ws_callback( struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len )
+static int
+prepare_heartbeat_message(char *buf)
 {
-    switch( reason )
+    return sprintf(buf, "h:%d", counter);
+}
+
+static int
+ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
+{
+    struct simperium_session *session = (struct simperium_session *)user;
+    switch (reason)
     {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("WS Connection Established\n");
-            lws_callback_on_writable( wsi );
+            lws_callback_on_writable(wsi);
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -33,11 +71,19 @@ static int ws_callback( struct lws *wsi, enum lws_callback_reasons reason, void 
         }
         case LWS_CALLBACK_CLIENT_WRITEABLE:
         {
-            unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + RX_BUFFER_BYTES + LWS_SEND_BUFFER_POST_PADDING];
-            unsigned char *p = &buf[LWS_SEND_BUFFER_PRE_PADDING];
-            size_t n = sprintf((char *)p, "h:%d", counter);
+            char buf[LWS_SEND_BUFFER_PRE_PADDING + RX_BUFFER_BYTES + LWS_SEND_BUFFER_POST_PADDING];
+            char *p = &buf[LWS_SEND_BUFFER_PRE_PADDING];
+            size_t n = 0;
+            if (!bucket_initialized) {
+                // auth init
+                n = prepare_init_message(p, session);
+                bucket_initialized = true;
+            } else {
+                // heartbeat
+                n = prepare_heartbeat_message(p);
+                counter = counter+2;
+            }
             printf("Data Out: %s\n", p);
-            counter = counter+2;
             lws_write( wsi, p, n, LWS_WRITE_TEXT );
             break;
         }
@@ -55,6 +101,12 @@ static int ws_callback( struct lws *wsi, enum lws_callback_reasons reason, void 
     return 0;
 }
 
+static void
+sigint_handler(int dummy) {
+    printf("\n");
+    stop_received = 1;
+}
+
 static struct lws_protocols protocols[] =
 {
     {
@@ -66,7 +118,8 @@ static struct lws_protocols protocols[] =
     { NULL, NULL, 0, 0 } /* terminator */
 };
 
-int main( int argc, char *argv[] )
+int
+main(int argc, char *argv[])
 {
     struct arg_lit *help;
     struct arg_str *app_name, *api_key, *user, *passwd;
@@ -147,6 +200,7 @@ int main( int argc, char *argv[] )
     ccinfo.path = ws_path;
     ccinfo.host = lws_canonical_hostname( context );
     ccinfo.origin = "api.simperium.com";
+    ccinfo.userdata = session;
 
 
     // we want to catch sig-int so we can cleanup
@@ -156,18 +210,18 @@ int main( int argc, char *argv[] )
     while(!stop_received)
     {
         struct timeval tv;
-        gettimeofday( &tv, NULL );
+        gettimeofday(&tv, NULL);
 
         /* Connect if we are not connected to the server. */
-        if( !web_socket && tv.tv_sec != old )
+        if (!web_socket && tv.tv_sec != old)
         {
            web_socket = lws_client_connect_via_info(&ccinfo);
         }
 
-        if( tv.tv_sec > old + 4 )
+        if (tv.tv_sec > old + 4)
         {
             /* Send a heartbeat to the server every 5 second. */
-            lws_callback_on_writable( web_socket );
+            lws_callback_on_writable(web_socket);
             old = tv.tv_sec;
         }
 
