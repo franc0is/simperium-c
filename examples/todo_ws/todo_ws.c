@@ -93,6 +93,7 @@ ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void 
         case LWS_CALLBACK_CLOSED:
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
             printf("WS Connection Closed\n");
+            bucket_initialized = false;
             web_socket = NULL;
             break;
 
