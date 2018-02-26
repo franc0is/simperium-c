@@ -23,7 +23,7 @@ static bool bucket_initialized = false;
 #define BUCKET_NAME "todo"
 #define SIMPERIUM_WS_API_VERSION 1.1
 
-#define RX_BUFFER_BYTES (256)
+#define RX_BUFFER_BYTES (512)
 
 static int
 prepare_init_message(char *buf, struct simperium_session *session)
@@ -83,8 +83,10 @@ ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void 
                 n = prepare_heartbeat_message(p);
                 counter = counter+2;
             }
-            printf("Data Out: %s\n", p);
-            lws_write( wsi, p, n, LWS_WRITE_TEXT );
+            if (n != 0) {
+                printf("Data Out: %s\n", p);
+                lws_write(wsi, p, n, LWS_WRITE_TEXT);
+            }
             break;
         }
 

@@ -5,7 +5,7 @@ MKDIR := mkdir
 AR := gar
 
 PROJECT := todo_ws
-BUILD_DIR := build
+BUILD_DIR := build/a/b/c
 
 ifneq ($(VERBOSE),)
   NO_ECHO=
