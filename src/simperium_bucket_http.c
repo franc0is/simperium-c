@@ -284,7 +284,11 @@ simperium_bucket_all_items_http(struct simperium_bucket *bucket,
         if (cursor &&
             (j = json_object_get(resp_json, "current")) != NULL &&
             json_is_string(j)) {
-            *cursor = json_string_value(j);
+            const char *v = json_string_value(j);
+            int l = strlen(v);
+            *cursor = calloc(l + 1, 1);
+            strcpy(*cursor, v);
+            printf("setting cursor to %s\n", *cursor);
         }
     } while (mark != NULL);
 
@@ -304,10 +308,6 @@ simperium_bucket_get_changes_http(struct simperium_bucket *bucket,
                                   simperium_change_callback cb,
                                   void *cb_data)
 {
-    return 0;
-/* FIXME the HTTP endpoint doesn't seem to be working.
-   See https://github.com/Simperium/simperium-python/issues/9
-
     struct simperium_app *app = bucket->session->app;
     char url[MAX_URL_LEN] = {0};
     const char *mark = NULL;
@@ -316,13 +316,13 @@ simperium_bucket_get_changes_http(struct simperium_bucket *bucket,
 
 
     // XXX more elegant way to add query params
-    sprintf(url, "%s/%s/%s/%s?clientid=12345", HOST_API,
+    sprintf(url, "%s/%s/%s/%s?", HOST_API,
                                 app->name,
                                 bucket->name,
                                 ENDPOINT_CHANGES);
 
     if (cursor && *cursor) {
-        strcat(url, "&since=");
+        strcat(url, "cv=");
         strcat(url, *cursor);
     }
 
@@ -418,6 +418,5 @@ error:
     }
 #endif
 error:
-    return 0;
-*/
+    return rv;
 }

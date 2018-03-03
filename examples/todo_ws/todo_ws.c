@@ -138,7 +138,7 @@ main(int argc, char *argv[])
         end      = arg_end(20),
     };
 
-    const char* progname = "simple";
+    const char* progname = "todo_ws";
     int exitcode = 0;
     int nerrors = arg_parse(argc,argv,argtable);
 

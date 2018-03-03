@@ -6,11 +6,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+static volatile int stop_received = 0;
+
+static void
+prv_sigint_handler(int dummy) {
+    printf("\n");
+    stop_received = 1;
+}
+
 static int
 prv_item_callback(struct simperium_item *item, void *cb_data)
 {
     printf("> ITEM %s:  %s\n", item->id, json_dumps(item->json_data, JSON_ENCODE_ANY));
 }
+
+static int
+prv_changes_callback(struct simperium_change *change, void *cb_data)
+{
+    printf("> CHANGE %s:  %s\n", change->id, json_dumps(change->json_data, JSON_ENCODE_ANY));
+}
+
 
 int
 main(int argc, char **argv)
@@ -29,7 +44,7 @@ main(int argc, char **argv)
         end      = arg_end(20),
     };
 
-    const char* progname = "todo_add_remove";
+    const char* progname = "todo_changes";
     int exitcode = 0;
     int nerrors = arg_parse(argc,argv,argtable);
 
@@ -53,6 +68,9 @@ main(int argc, char **argv)
         exitcode = 1;
         goto exit;
     }
+
+    // we want to catch sig-int so we can cleanup
+    signal(SIGINT, prv_sigint_handler);
 
     struct simperium_app *app = simperium_app_init(app_name->sval[0], api_key->sval[0]);
     if (!app) {
@@ -78,25 +96,17 @@ main(int argc, char **argv)
         goto close_session;
     }
 
-    int err = simperium_bucket_all_items(todo_bkt, NULL, prv_item_callback, NULL);
 
-    const char *id = "12345678";
-    struct simperium_item item = {0};
-    strncpy(item.id, id, MAX_ITEM_ID_LEN);
-    item.json_data = json_loads("{\"title\": \"Watch Battle Royale\",\"done\": false}", JSON_DECODE_ANY, NULL);
-    err = simperium_bucket_add_item(todo_bkt, &item);
-    if (err == 0) {
-        printf("Added one item to todo bucket\n");
-    }
+    char *cursor = NULL;
+    int err = simperium_bucket_all_items(todo_bkt, &cursor, prv_item_callback, NULL);
 
-    err = simperium_bucket_get_item(todo_bkt, id, prv_item_callback, NULL);
-    if (err = 0) {
-        printf("Got one item\n");
-    }
+    printf("cursor is %s\n", cursor);
 
-    err = simperium_bucket_remove_item(todo_bkt, &item);
-    if (err == 0) {
-        printf("Removed item from todo bucket\n");
+    printf("Waiting for changes... \n");
+
+    while (!err && !stop_received) {
+        err = simperium_bucket_get_changes(todo_bkt, &cursor, prv_changes_callback, NULL);
+        break;
     }
 
 close_bucket:
