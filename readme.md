@@ -23,6 +23,16 @@ Much remains TODO, including (but not limited to):
 * cross-platform support
 * A sane build system
 
+## Examples
+
+Three examples are currently provided. They are all based on simperium's "todo"
+example.
+
+* `todo_add_remove`: a simple client which lists the todo items, adds one, and
+  removes it
+* `todo_changes`: a client which polls the todo bucket for changes
+* `todo_ws`: a very-wip client which polls the todo bucket over websocket
+
 ## Dependencies
 
 All dependencies are included in the "3rdparty" directory. They are:
@@ -30,3 +40,5 @@ All dependencies are included in the "3rdparty" directory. They are:
 - libcurl
 - jansson
 - argtable3
+- libwebsockets
+- [jsondiff-c](https://github.com/franc0is/jsondiff-c)
