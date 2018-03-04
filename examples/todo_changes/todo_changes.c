@@ -106,7 +106,6 @@ main(int argc, char **argv)
 
     while (!err && !stop_received) {
         err = simperium_bucket_get_changes(todo_bkt, &cursor, prv_changes_callback, NULL);
-        break;
     }
 
 close_bucket:

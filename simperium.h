@@ -7,8 +7,14 @@ enum simperium_result {
 };
 
 enum simperium_op {
-    SIMPERIUM_OP_UPSERT,
+    SIMPERIUM_OP_INVALID = 0,
+    SIMPERIUM_OP_INSERT,
     SIMPERIUM_OP_DELETE,
+    SIMPERIUM_OP_REPLACE,
+    SIMPERIUM_OP_INCREMENT,
+    SIMPERIUM_OP_LISTDIFF,
+    SIMPERIUM_OP_OBJDIFF,
+    SIMPERIUM_OP_STRDIFF,
 };
 
 enum simperium_protocol {
