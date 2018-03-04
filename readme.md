@@ -10,17 +10,18 @@ verified that we can:
 * Add items to buckets
 * Remove items from buckets
 * Get items from buckets
+* Get all items in a bucket
+* Poll bucket for changes
+
+Most of those things can be done either over HTTP or WebSockets
 
 Much remains TODO, including (but not limited to):
-* Any kind of change polling
+* diff resolving (see [jsondiff-c](https://github.com/franc0is/jsondiff-c))
 * network condition handling
 * a clean header files
 * API comments
 * cross-platform support
 * A sane build system
-
-At some point, this will also support the WebSocket API (but currently it's all
-HTTP)
 
 ## Dependencies
 
