@@ -49,12 +49,15 @@ prv_add_auth_header(struct simperium_session *session)
 static enum simperium_op
 prv_op_from_string(const char *s)
 {
+    // XXX should this come from the jsondiff library?
+    // XXX actually, no. Simperium ops (upsert, delete) are different from jsondiff ops.
+    // FIXME this library should have no knowledge of the latter.
     switch (s[0]) {
         case '+':
             return SIMPERIUM_OP_INSERT;
         case '-':
             return SIMPERIUM_OP_DELETE;
-        case 'R':
+        case 'r':
             return SIMPERIUM_OP_REPLACE;
         case 'I':
             return SIMPERIUM_OP_INCREMENT;
