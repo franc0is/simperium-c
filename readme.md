@@ -47,7 +47,7 @@ example.
 
 ## Dependencies
 
-All dependencies are included in the "3rdparty" directory. They are:
+All dependencies are managed through [conan](conan.io)
 
 - libcurl
 - jansson
