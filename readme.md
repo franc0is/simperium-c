@@ -27,9 +27,9 @@ Much remains TODO, including (but not limited to):
 simperium-c users [conan](conan.io) for dependency management and cmake as build
 system.
 
-$ mkdir build
-$ conan install -b ..
-$ conan build ..
+  $ mkdir build
+  $ conan install -b ..
+  $ conan build ..
 
 ## Examples
 
