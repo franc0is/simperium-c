@@ -21,7 +21,15 @@ Much remains TODO, including (but not limited to):
 * a clean header files
 * API comments
 * cross-platform support
-* A sane build system
+
+## Build instructions
+
+simperium-c users [conan](conan.io) for dependency management and cmake as build
+system.
+
+$ mkdir build
+$ conan install -b ..
+$ conan build ..
 
 ## Examples
 
